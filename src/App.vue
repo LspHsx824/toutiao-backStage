@@ -10,6 +10,11 @@ export default {
   name: 'App',
   components: {
     HelloWorld
+  },
+  mounted(){
+    console.log(this.$store);
+    console.log(this.$router);
+    console.log(this.$route);
   }
 }
 </script>
