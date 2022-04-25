@@ -18,6 +18,10 @@
             <el-form-item prop="code">
                 <el-input v-model="form.code" placeholder="请输入验证码" />
             </el-form-item>
+
+            <el-form-item prop="remember">
+                <el-checkbox v-model="form.remember">记住密码</el-checkbox>
+            </el-form-item>
             <el-form-item prop="isAgree">
                 <el-checkbox v-model="form.isAgree">我已阅读并同意用户协议和隐私条款</el-checkbox>
             </el-form-item>
@@ -43,9 +47,16 @@ export default {
 <script setup>
 // import request from "@/utils/request";
 
-import { reactive, ref, inject, useRouter } from "vue";
+// 加密包
+import CryptoJS from "crypto-js";
 
-import { login } from "@/api/user"
+import { useRouter,useRoute } from "vue-router";
+import { useStore } from "vuex";
+import { reactive, ref, inject, shallowReadonly ,onMounted } from "vue";
+
+import { login } from "@/api/user";
+
+import  userCookie from "@/hook/userCookie"
 
 // const { appContext } = getCurrentInstance();
 // appContext.config.globalProperties.$message.success("聪明");
@@ -55,23 +66,68 @@ import { login } from "@/api/user"
 const ruleFormRef = ref();
 const ElMessage = inject("$message");
 const isLoading = ref(false);
-const Router = useRouter()
-
+const Router = useRouter();
+const route = useRoute()
+const store = useStore();
 
 const form = reactive({
-    name: "13911111111",
-    code: "246810",
-    isAgree: true
+    name: "",
+    // name: "13911111111",
+    // code: "246810",
+    code: "",
+    isAgree: true,
+    remember: true, //记住密码
 });
+
+const { setCookie, getCookie ,clearCookie } = userCookie()
+
+// const setCookie = (name, code, vaildTime) => {
+//     // const code_cookie = shallowReadonly(code)
+//     const ciphertsts = CryptoJS.AES.encrypt(code, "secre key");
+//     // console.log(ciphertsts);
+
+//     let exdate = new Date(); //  获取时间
+
+//     //有效时间
+//     exdate.setTime(exdate.getTime() + 24 * 60 * 60 * 1000 * vaildTime); //  保存的天数
+
+//     // 字符串拼接cookie
+//     window.document.cookie =
+//         'mobile' + '=' + name + ';path=/;expires=' + exdate.toUTCString()
+//     window.document.cookie =
+//         'code' + '=' + ciphertsts + ';path=/;expires=' + exdate.toUTCString()
+
+//         // console.log(document.cookie);
+    
+// };
 
 const checkIsAgree = (rule, value, callback) => {
     if (!value) {
-        callback(new Error("请勾选同意用户协议"))
+        callback(new Error("请勾选同意用户协议"));
     } else {
-        callback()
+        callback();
     }
-}
+};
+const checkRemember = (rule, value, callback) => {
+    if (!value) {
+        //  清空Cookie
+        clearCookie();
+        callback();
+    } else {
+        //  传入账号名，密码，和保存天数3个参数
+        // clearCookie()
+        setCookie(form.name, form.code, 7);
+        
+        // console.log(document.cookie);
+        callback(); //记住密码
+    }
+};
 
+onMounted(()=>{
+    const { name,code }  = getCookie()
+    form.name = name
+    form.code = code
+})
 
 const rules = reactive({
     name: [
@@ -91,12 +147,11 @@ const rules = reactive({
             trigger: "blur",
         },
     ],
-    isAgree: [{ validator: checkIsAgree, trigger: ["change", "blur"] }]
+    isAgree: [{ validator: checkIsAgree, trigger: ["change", "blur"] }],
+    remember: [{ validator: checkRemember, trigger: ["change", "blur"] }],
 });
 
-
 const onLogin = async () => {
-
     isLoading.value = true; // button loading
 
     try {
@@ -108,12 +163,12 @@ const onLogin = async () => {
             message: "登录成功",
             type: "success",
         });
-        console.log(data);
-        Router.push({
-            name:"home"
-        })
-        
+        // console.log(data);
+        store.commit("setUser", data.data);
 
+        Router.push({
+            path: route.query?.redirect ?? "/home"
+        });
     } catch (err) {
         // console.log(err);
         ElMessage({
@@ -127,10 +182,10 @@ const onLogin = async () => {
 
 const submitForm = async (formEl) => {
     if (!formEl) return;
-    await formEl.validate(valid => {
+    await formEl.validate((valid) => {
         if (valid) {
             // 表单验证通过 valid 是有效的
-            onLogin()
+            onLogin();
         } else {
             ElMessage({
                 showClose: true,

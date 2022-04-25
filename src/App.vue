@@ -1,6 +1,7 @@
 <template>
     <div id="app">
-        <router-view></router-view>
+      <!-- 一级路由出口 -->
+      <router-view></router-view> 
     </div>
 </template>
 
@@ -8,9 +9,14 @@
 
 export default {
   name: 'App',
-  components: {
-  },
 
 }
 </script>
 
+<style>
+  *{
+    padding: 0;
+    margin: 0;
+    list-style: none;
+  }
+</style>
